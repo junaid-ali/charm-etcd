@@ -1,34 +1,27 @@
-name: etcd
-summary: A distributed key value store for configuration and service discovery.
-description: |
-  A highly-available key value store for shared configuration and service
-  discovery. etcd is inspired by Apache ZooKeeper and doozer, with a
-  focus on being:
-
-   Simple: curl'able user facing API (HTTP+JSON)
-   Secure: optional SSL client cert authentication
-   Fast: benchmarked 1000s of writes/s per instance
-   Reliable: properly distributed using Raft
-
-  etcd is written in Go and uses the Raft consensus algorithm to
-  manage a highly-available replicated log.
-
-tags:
-  - coordination
-  - "service discovery"
-  - ops
-maintainers:
-  - "Whit Morriss <whit.morriss@canonical.com>"
-  - "Charles Butler <charles.butler@canonical.com>"
-  - "Matt Bruzek <matthew.bruzek@canonical.com>"
-provides:
-  client:
-    interface: etcd
-  proxy:
-    interface: etcd-proxy
-peers:
-  cluster:
-    interface: etcd-raft
-series:
-  - trusty
-  - xenial
+"name": "etcd"
+"summary": "Deploy a TLS terminated ETCD Cluster"
+"maintainers":
+- "Charles Butler <charles.butler@canonical.com>"
+"description": |
+  This charm supports deploying Etcd from the upstream binaries with resources.
+  It will also TLS wrap your service, and distribute client keys to any service
+  connecting. Etcd is a highly available key/value store.
+"tags":
+- "infrastructure"
+- "security"
+- "database"
+- "keystore"
+- "layer"
+"provides":
+  "db":
+    "interface": "etcd"
+  "proxy":
+    "interface": "etcd-proxy"
+"peers":
+  "certificates":
+    "interface": "tls"
+  "cluster":
+    "interface": "etcd"
+"series":
+- "xenial"
+"subordinate": !!bool "false"

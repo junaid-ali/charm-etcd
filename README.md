@@ -2,75 +2,117 @@
 
 Etcd is a highly available distributed key value store that provides a reliable
 way to store data across a cluster of machines. Etcd gracefully handles master
-elections during network partitions and will tolerate machine failure, including
-the master.
+elections during network partitions and will tolerate machine failure,
+including the master.
 
-Your applications can read and write data into etcd. A simple use-case is to
-store database connection details or feature flags in etcd as key value pairs.
+Your applications can read and write data into Etcd. A simple use-case is to
+store database connection details or feature flags in Etcd as key value pairs.
 These values can be watched, allowing your app to reconfigure itself when they
 change.
 
 Advanced uses take advantage of the consistency guarantees to implement
-database master elections or do distributed locking across a cluster of workers.
+database master elections or do distributed locking across a cluster of
+workers.
 
-Etcd allows storing data in a distributed hierarchical database with observation.
+Etcd allows storing data in a distributed hierarchical database with
+observation.
 
-## Usage
+# Usage
 
 We can deploy a single node easily with
 
-    juju deploy cs:trusty/etcd
+```shell
+juju deploy etcd
+```
+And add capacity with:
 
-Add and capacity with:
+```shell
+juju add-unit -n 2 etcd
+```
 
-    juju add-unit -n 2 etcd
+It's recommended to run an odd number of machines as it has greater redundancy
+than an even number (i.e. with 4, you can lose 1 before quorum is lost, whereas
+with 5, you can lose 2).
 
-Its recommended to run an odd number of machines as it has greater redundancy than
-even number (ie. 4, you can lose 1 before quorum is lost, where as 5, you can 2).
+### Notes about cluster turn-up
 
+The Etcd charm initializes a cluster using the Static configuration: which
+is the most "flexible" of all the installation options, considering it allows
+Etcd to be self-discovering using the peering relationships provided by
+Juju.
 
-### Advanced Usage
-
-This charm also supports a `proxy` relation, when using the ETCD cluster as a
-discovery service for your own applications. Reference the
-[upstream documentation](https://github.com/coreos/etcd/blob/master/Documentation/proxy.md)
-to learn more about this feature of ETCD
-
-    juju add-relation <service>:<relation> etcd:proxy
-
-
-For each node in the cluster, you will receive a cluster-string that you can
-use to point your application into the cluster and join the gossip.
-
-## Health
-
+# Health
 Health of the cluster can be checked by verified via juju actions
 
-    juju action do etcd/0 health
-    <return response uuid>
-    juju action fetch <uuid>
+```shell
+juju action do etcd/0 health
+<return response uuid>
+juju action fetch <uuid>
+
+```
+
+The health is also reported continuously via `juju status`. During initial
+cluster turn-up, it's entirely reasonable for the health checks to fail; this
+is not a situation to cause you alarm. The health-checks are being executed
+before the cluster has stabilized, and it should even out once the members
+start to come online and the update-status hook is run again.
+
+This will give you some insight into the cluster on a 5 minute interval, and
+will report healthy nodes vs unhealthy nodes.
+
+For example:
+
+```shell
+ID      WORKLOAD-STATUS JUJU-STATUS VERSION   MACHINE PORTS             PUBLIC-ADDRESS MESSAGE
+etcd/9  active          idle        2.0-beta6 10      2379/tcp,2380/tcp 192.168.239.20 cluster-health check failed... needs attention
+etcd/10 active          idle        2.0-beta6 9       2379/tcp,2380/tcp 192.168.91.60  (leader) cluster is healthy
+```
+
+# TLS
+
+The ETCD charm supports TLS terminated endpoints by default. All efforts have
+been made to ensure the PKI is as robust as possible.
+
+Client certificates can be obtained by running an action on any of the cluster
+members:
+
+```shell
+juju run-action etcd/12 generate-client-certificates
+juju scp etcd/12:etcd_client_credentials.tar.gz etcd_credentials.tar.gz
+```
+
+This will place the client certificates in `pwd`. If you're keen on using
+etcdctl outside of the cluster machines,  you'll need to expose the service,
+and export some environment variables to consume the client credentials.
+
+```shell
+juju expose etcd
+export ETCDCTL_KEY_FILE=$(pwd)/clientkey.pem
+export ETCDCTL_CERT_FILE=$(pwd)/clientcert.pem
+export ETCDCTL_CA_FILE=$(pwd)/ca.pem
+export ETCDCTL_ENDPOINT=https://{ip of etcd host}:2379
+etcdctl member list
+```
 
 
-## Usage Caveats
+# Known Limitations
 
-This charm requires Leader Election, which is a feature of Juju >= 1.23.2. The
-charm will panic and refuse to continue if the leader_election binary is not
-found. Please take care when deploying this charm on older versions of Juju.
+If you destroy the leader - identified with the `(leader)` text prepended to
+any status messages: all TLS pki will be lost. No PKI migration occurs outside
+of the units requesting and registering the certificates. You have been warned.
 
-## Credits
+Additionally, this charm breaks with no backwords compat/upgrade path at the trusty/xenial
+series boundary. Xenial forward will enable TLS by default. This is an incompatible break
+due to the nature of peer relationships, and how the certificates are generated/passed off.
 
-The etcd charm was originally written by Kapil Thangavelu ([@kapilt](https://github.com/kapilt)).
+To migrate from trusty to xenial, the operator will be responsible for deploying the
+xenial etcd cluster, then issuing an etcd data dump on the trusty series, and importing
+that data into the new cluster. This can be performed on a single node due to the
+nature of how replicas work in Etcd.
 
-#### Maintainers:
+Any issues with the above process should be filed against the charm layer in github.
 
-The kubernetes team maintains this charm:
-  - Whit Morriss &lt;whit.morriss@canonical.com&gt;
-  - Charles Butler &lt;charles.butler@canonical.com&gt;
-  - Matt Bruzek &lt;matthew.bruzek@canonical.com&gt;
+## Contributors
 
-
-## Upstream Project Information
-
-- [Using ETCD](https://coreos.com/using-coreos/etcd/)
-- [ETCD Getting Started Guide](https://coreos.com/docs/distributed-configuration/getting-started-with-etcd/)
-- [ETCD Issue Tracker](https://github.com/coreos/etcd)
+- Charles Butler &lt;[charles.butler@canonical.com](mailto:charles.butler@canonical.com)&gt;
+- Mathew Bruzek  &lt;[mathew.bruzek@canonical.com](mailto:mathew.bruzek@canonical.com)&gt;

@@ -1,11 +1,16 @@
-options:
-  debug:
-    type: boolean
-    default: true
-    description: |
-        *DEPRECATED* Enable debug logging
-  snapshot:
-    type: boolean
-    default: true
-    description: |
-        *DEPRECATED* Enable log snapshots
+"options":
+  "root_certificate":
+    "type": "string"
+    "default": ""
+    "description": |
+      The root certificate to use for this grouping of charms.
+      If empty (default) the leader will generate a self signed Certificate
+      Authority (CA). All certificates will be based on the root certificate.
+  "port":
+    "type": "int"
+    "default": !!int "2379"
+    "description": "Port to run the public ETCD service on"
+  "management_port":
+    "type": "int"
+    "default": !!int "2380"
+    "description": "Port to run the ETCD Management service"

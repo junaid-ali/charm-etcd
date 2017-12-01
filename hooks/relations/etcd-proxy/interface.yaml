@@ -1,0 +1,4 @@
+name: etcd-proxy
+summary: Interface for relating to ETCD
+version: 1
+maintainer: "Charles Butler <charles.butler@canonical.com>"
